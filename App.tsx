@@ -27,16 +27,6 @@ import {
 } from "lucide-react";
 
 // ============================================================================
-// API KEY CONSTANTS (Replace with your actual keys)
-// ============================================================================
-const API_KEYS = {
-  GROQ_API_KEY: "INSERT_KEY_HERE",
-  OPENROUTER_API_KEY: "INSERT_KEY_HERE",
-  OPENAI_API_KEY: "INSERT_KEY_HERE",
-  ANTHROPIC_API_KEY: "INSERT_KEY_HERE",
-};
-
-// ============================================================================
 // TYPE DEFINITIONS
 // ============================================================================
 type RoleMode = "Admin" | "Guest";
@@ -52,13 +42,13 @@ interface ChatMessage {
 
 interface ApiKeyConfig {
   label: string;
-  key: keyof typeof API_KEYS;
+  key: "GROQ_API_KEY" | "OPENROUTER_API_KEY" | "OPENAI_API_KEY" | "ANTHROPIC_API_KEY";
   value: string;
   isVisible: boolean;
 }
 
 // ============================================================================
-// INITIAL STATE
+// INITIAL STATE & PLACEHOLDERS
 // ============================================================================
 const INITIAL_MESSAGES: ChatMessage[] = [
   {
@@ -68,82 +58,12 @@ const INITIAL_MESSAGES: ChatMessage[] = [
       "Welcome to Nova. I'm your AI-powered app builder. Tell me what you want to create, and I'll generate the scaffolding, components, and configuration for you.",
     timestamp: new Date(Date.now() - 60000),
   },
-  {
-    id: "2",
-    role: "user",
-    content: "Build a financial analytics dashboard with real-time data and a dark theme.",
-    timestamp: new Date(Date.now() - 45000),
-  },
-  {
-    id: "3",
-    role: "assistant",
-    content:
-      "Perfect. I'll create a modular dashboard with KPI cards, interactive charts, and a responsive layout. Would you prefer a desktop-first or mobile-responsive design?",
-    timestamp: new Date(Date.now() - 30000),
-  },
 ];
 
-const MOCK_CODE = `import React from 'react';
-import { TrendingUp, Users, Shield } from 'lucide-react';
-
-export default function Dashboard() {
-  return (
-    <div className="bg-black text-white p-8">
-      <header className="mb-8">
-        <h1 className="text-4xl font-bold">Analytics</h1>
-        <p className="text-neutral-400 mt-2">Real-time financial insights</p>
-      </header>
-
-      <div className="grid grid-cols-3 gap-6">
-        <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-neutral-500 text-sm">Revenue</p>
-              <p className="text-3xl font-bold mt-2">$84.6K</p>
-            </div>
-            <TrendingUp className="text-emerald-500" size={24} />
-          </div>
-          <p className="text-emerald-500 text-xs mt-4">+18.2% this month</p>
-        </div>
-
-        <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-neutral-500 text-sm">Active Users</p>
-              <p className="text-3xl font-bold mt-2">24.3K</p>
-            </div>
-            <Users className="text-cyan-500" size={24} />
-          </div>
-          <p className="text-cyan-500 text-xs mt-4">+6.8% growth</p>
-        </div>
-
-        <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-neutral-500 text-sm">Security</p>
-              <p className="text-3xl font-bold mt-2">99.9%</p>
-            </div>
-            <Shield className="text-violet-500" size={24} />
-          </div>
-          <p className="text-violet-500 text-xs mt-4">All systems healthy</p>
-        </div>
-      </div>
-
-      <div className="mt-8 bg-neutral-900 border border-neutral-800 rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">Revenue Trend</h2>
-        <div className="h-32 flex items-end gap-1">
-          {[40, 50, 45, 65, 55, 80, 90, 70, 85, 95, 80, 100].map((h) => (
-            <div
-              key={h}
-              className="flex-1 bg-gradient-to-t from-cyan-500 to-emerald-500 rounded-t"
-              style={{ height: \`\${h}%\` }}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}`;
+const FALLBACK_MOCK_CODE = `// Welcome to Nova Studio!
+// Describe the app you want to build in the chat.
+// Example: "Build a modern pricing table for a SaaS product."
+// I will connect to Groq AI and generate the React code here.`;
 
 // ============================================================================
 // MAIN COMPONENT
@@ -155,40 +75,116 @@ export default function App() {
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState<string>(FALLBACK_MOCK_CODE);
+  
+  // API Keys State
   const [apiKeys, setApiKeys] = useState<ApiKeyConfig[]>([
-    {
-      label: "Groq",
-      key: "GROQ_API_KEY",
-      value: API_KEYS.GROQ_API_KEY,
-      isVisible: false,
-    },
-    {
-      label: "OpenRouter",
-      key: "OPENROUTER_API_KEY",
-      value: API_KEYS.OPENROUTER_API_KEY,
-      isVisible: false,
-    },
-    {
-      label: "OpenAI",
-      key: "OPENAI_API_KEY",
-      value: API_KEYS.OPENAI_API_KEY,
-      isVisible: false,
-    },
-    {
-      label: "Anthropic",
-      key: "ANTHROPIC_API_KEY",
-      value: API_KEYS.ANTHROPIC_API_KEY,
-      isVisible: false,
-    },
+    { label: "Groq", key: "GROQ_API_KEY", value: "", isVisible: false },
+    { label: "OpenRouter", key: "OPENROUTER_API_KEY", value: "", isVisible: false },
+    { label: "OpenAI", key: "OPENAI_API_KEY", value: "", isVisible: false },
+    { label: "Anthropic", key: "ANTHROPIC_API_KEY", value: "", isVisible: false },
   ]);
+
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom
+  // Load API Keys from Local Storage on Mount
+  useEffect(() => {
+    const savedKeys = localStorage.getItem("novaApiKeys");
+    if (savedKeys) {
+      try {
+        const parsedKeys = JSON.parse(savedKeys);
+        setApiKeys((prev) =>
+          prev.map((k) => ({
+            ...k,
+            value: parsedKeys[k.key] || k.value,
+          }))
+        );
+      } catch (e) {
+        console.error("Failed to parse API keys from storage");
+      }
+    }
+  }, []);
+
+  // Save API Keys to Local Storage when they change
+  useEffect(() => {
+    const keysToSave = apiKeys.reduce((acc, curr) => {
+      acc[curr.key] = curr.value;
+      return acc;
+    }, {} as Record<string, string>);
+    localStorage.setItem("novaApiKeys", JSON.stringify(keysToSave));
+  }, [apiKeys]);
+
+  // Auto-scroll to bottom of chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // --------------------------------------------------------------------------
+  // GROQ API INTEGRATION (REAL FETCH)
+  // --------------------------------------------------------------------------
+  const generateCodeWithGroq = async (userPrompt: string) => {
+    const groqKeyConfig = apiKeys.find((k) => k.key === "GROQ_API_KEY");
+    const groqKey = groqKeyConfig?.value;
+
+    if (!groqKey) {
+      setGeneratedCode("// ERROR: Missing Groq API Key.\n// Please enter your API key in the Admin panel (gear icon top right) to generate code.");
+      return "I need a Groq API key to generate code. Please add it in the Admin settings.";
+    }
+
+    try {
+      // Prepare the history for context
+      const chatHistory = messages.map(m => ({
+        role: m.role,
+        content: m.content
+      }));
+
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${groqKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-70b-versatile", // Powerful model for coding
+          messages: [
+            {
+              role: "system",
+              content: "You are an expert React developer. The user will ask you to build UI components. Generate a single, clean, production-ready React component (App.tsx) using Tailwind CSS and 'lucide-react' icons. ONLY RETURN THE RAW CODE BLOCK. Do not use markdown backticks (```tsx) in your response, just the raw text of the code. Provide a brief 1-sentence summary of what you built at the very end as a comment."
+            },
+            ...chatHistory,
+            {
+              role: "user",
+              content: userPrompt
+            }
+          ],
+          temperature: 0.5,
+          max_tokens: 3000,
+        })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Groq API Error: ${response.status} - ${errText}`);
+      }
+
+      const data = await response.json();
+      const aiResponseContent = data.choices[0].message.content;
+
+      // Extract code (removing any accidental markdown)
+      const cleanCode = aiResponseContent.replace(/```jsx|```tsx|```javascript|```/g, "").trim();
+      setGeneratedCode(cleanCode);
+      setActiveTab("code"); // Switch to code view to show result
+
+      return "I have generated the component based on your request. Check the 'Code' tab to view and copy the result!";
+      
+    } catch (error: any) {
+      console.error(error);
+      setGeneratedCode(`// ERROR communicating with Groq:\n// ${error.message}`);
+      return `I encountered an error while trying to generate the code: ${error.message}`;
+    }
+  };
 
   // Handle message submission
   const handleSendMessage = async () => {
@@ -202,24 +198,27 @@ export default function App() {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const currentInput = inputValue; // Save it before clearing
     setInputValue("");
     setIsLoading(true);
 
-    // Simulate AI response delay
-    setTimeout(() => {
-      const assistantMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content:
-          "I've captured your requirements. I'm generating the component structure, API integrations, and styling now. The scaffold will be ready in the Code View.",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-      setIsLoading(false);
-    }, 1000);
+    // Call Groq API
+    const aiTextResponse = await generateCodeWithGroq(currentInput);
+
+    const assistantMessage: ChatMessage = {
+      id: (Date.now() + 1).toString(),
+      role: "assistant",
+      content: aiTextResponse,
+      timestamp: new Date(),
+    };
+    
+    setMessages((prev) => [...prev, assistantMessage]);
+    setIsLoading(false);
   };
 
-  // Toggle API key visibility
+  // --------------------------------------------------------------------------
+  // ADMIN PANEL HANDLERS
+  // --------------------------------------------------------------------------
   const toggleKeyVisibility = (key: keyof typeof API_KEYS) => {
     setApiKeys((prev) =>
       prev.map((item) =>
@@ -228,14 +227,12 @@ export default function App() {
     );
   };
 
-  // Copy API key to clipboard
   const copyToClipboard = (key: keyof typeof API_KEYS, value: string) => {
     navigator.clipboard.writeText(value);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  // Update API key value
   const updateApiKey = (key: keyof typeof API_KEYS, value: string) => {
     setApiKeys((prev) =>
       prev.map((item) =>
@@ -253,20 +250,16 @@ export default function App() {
     <div
       dir={direction}
       className="min-h-screen bg-black text-neutral-200 flex flex-col"
-      style={{
-        backgroundColor: "#0a0a0a",
-      }}
+      style={{ backgroundColor: "#0a0a0a" }}
     >
-      {/* ====================================================================
-          HEADER BAR
-          ==================================================================== */}
-      <header className="border-b border-neutral-800 bg-black/50 backdrop-blur px-6 py-3 flex items-center justify-between">
+      {/* HEADER BAR */}
+      <header className="border-b border-neutral-800 bg-black/50 backdrop-blur px-6 py-3 flex items-center justify-between z-10">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <Bot className="w-5 h-5 text-cyan-500" />
-            <span className="text-sm font-semibold text-neutral-200">Nova</span>
+            <span className="text-sm font-semibold text-neutral-200">Nova Workspace</span>
           </div>
-          <span className="text-xs text-neutral-500">Prompt-to-App Builder</span>
+          <span className="text-xs text-neutral-500 hidden sm:inline-block">AI Code Generation Engine</span>
         </div>
 
         <div className="flex items-center gap-4">
@@ -297,16 +290,14 @@ export default function App() {
           </button>
 
           {/* Status Indicator */}
-          <div className="flex items-center gap-2 text-xs text-neutral-500">
-            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-            System ready
+          <div className="hidden md:flex items-center gap-2 text-xs text-neutral-500">
+            <div className={`w-1.5 h-1.5 rounded-full ${isLoading ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+            {isLoading ? "Generating..." : "System ready"}
           </div>
         </div>
       </header>
 
-      {/* ====================================================================
-          MAIN WORKSPACE (Split-pane layout)
-          ==================================================================== */}
+      {/* MAIN WORKSPACE (Split-pane layout) */}
       <div className="flex-1 flex overflow-hidden">
         {/* LEFT PANE: AI CHAT SIDEBAR */}
         <aside className="w-[420px] border-r border-neutral-800 bg-black/30 flex flex-col">
@@ -329,10 +320,10 @@ export default function App() {
                 className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-xs px-4 py-2 rounded-lg text-sm leading-relaxed ${
+                  className={`max-w-xs px-4 py-3 rounded-lg text-sm leading-relaxed ${
                     message.role === "user"
-                      ? "bg-cyan-600/20 border border-cyan-500/30 text-neutral-100"
-                      : "bg-neutral-900 border border-neutral-800 text-neutral-300"
+                      ? "bg-cyan-600/20 border border-cyan-500/30 text-neutral-100 rounded-tr-sm"
+                      : "bg-neutral-900 border border-neutral-800 text-neutral-300 rounded-tl-sm"
                   }`}
                 >
                   {message.content}
@@ -342,11 +333,11 @@ export default function App() {
 
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-neutral-900 border border-neutral-800 px-4 py-2 rounded-lg">
-                  <div className="flex gap-1">
-                    <div className="w-1.5 h-1.5 bg-neutral-500 rounded-full animate-bounce" />
-                    <div className="w-1.5 h-1.5 bg-neutral-500 rounded-full animate-bounce delay-100" />
-                    <div className="w-1.5 h-1.5 bg-neutral-500 rounded-full animate-bounce delay-200" />
+                <div className="bg-neutral-900 border border-neutral-800 px-4 py-3 rounded-lg rounded-tl-sm">
+                  <div className="flex gap-1.5 items-center h-4">
+                    <div className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-bounce" />
+                    <div className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-bounce delay-100" />
+                    <div className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-bounce delay-200" />
                   </div>
                 </div>
               </div>
@@ -357,19 +348,24 @@ export default function App() {
 
           {/* Input Area */}
           <div className="border-t border-neutral-800 p-4 bg-black/50">
-            <div className="flex gap-2">
-              <input
-                type="text"
+            <div className="flex gap-2 items-end">
+              <textarea
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
                 placeholder="Describe your app..."
-                className="flex-1 bg-neutral-900 border border-neutral-800 rounded px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 outline-none focus:border-neutral-700 transition"
+                className="flex-1 bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 outline-none focus:border-neutral-700 transition resize-none min-h-[42px] max-h-32"
+                rows={1}
               />
               <button
                 onClick={handleSendMessage}
                 disabled={isLoading || !inputValue.trim()}
-                className="p-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-neutral-800 disabled:text-neutral-600 text-white rounded transition"
+                className="p-2.5 bg-cyan-600 hover:bg-cyan-700 disabled:bg-neutral-800 disabled:text-neutral-600 text-white rounded-lg transition"
               >
                 <Send className="w-4 h-4" />
               </button>
@@ -414,28 +410,29 @@ export default function App() {
           </div>
 
           {/* Tab Content */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden relative">
             {activeTab === "preview" ? (
               <PreviewPane />
             ) : (
-              <CodePane code={MOCK_CODE} />
+              <CodePane code={generatedCode} />
+            )}
+            
+            {/* ADMIN PANEL (Overlay inside right pane) */}
+            {role === "Admin" && showAdminPanel && (
+              <div className="absolute top-0 right-0 w-80 h-full border-l border-neutral-800 bg-neutral-950/95 backdrop-blur shadow-2xl z-50">
+                 <AdminPanel
+                  apiKeys={apiKeys}
+                  copiedKey={copiedKey}
+                  onToggleVisibility={toggleKeyVisibility}
+                  onCopyKey={copyToClipboard}
+                  onUpdateKey={updateApiKey}
+                  onClose={() => setShowAdminPanel(false)}
+                />
+              </div>
             )}
           </div>
         </main>
       </div>
-
-      {/* ====================================================================
-          ADMIN PANEL (Slide-out, below the main layout)
-          ==================================================================== */}
-      {role === "Admin" && showAdminPanel && (
-        <AdminPanel
-          apiKeys={apiKeys}
-          copiedKey={copiedKey}
-          onToggleVisibility={toggleKeyVisibility}
-          onCopyKey={copyToClipboard}
-          onUpdateKey={updateApiKey}
-        />
-      )}
     </div>
   );
 }
@@ -445,140 +442,28 @@ export default function App() {
 // ============================================================================
 function PreviewPane() {
   return (
-    <div className="h-full overflow-auto bg-black p-4">
-      {/* Fake Browser Frame */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden flex flex-col h-full">
-        {/* Browser Top Bar */}
-        <div className="bg-neutral-950 border-b border-neutral-800 px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex gap-1">
-              <div className="w-3 h-3 rounded-full bg-red-500" />
-              <div className="w-3 h-3 rounded-full bg-yellow-500" />
-              <div className="w-3 h-3 rounded-full bg-green-500" />
+    <div className="h-full overflow-auto bg-black p-4 flex items-center justify-center">
+      {/* Fake Browser Frame for Future Live Preview */}
+      <div className="w-full max-w-4xl h-full max-h-[800px] bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden flex flex-col shadow-2xl">
+        <div className="bg-neutral-950 border-b border-neutral-800 px-4 py-3 flex items-center gap-4">
+          <div className="flex gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-red-500/80" />
+            <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+            <div className="w-3 h-3 rounded-full bg-green-500/80" />
+          </div>
+          <div className="flex-1 flex justify-center">
+            <div className="bg-black/50 border border-neutral-800 rounded-md px-4 py-1 text-xs text-neutral-500 font-mono">
+              localhost:3000
             </div>
           </div>
-          <div className="flex-1 ml-4">
-            <div className="text-xs text-neutral-500 bg-neutral-900 rounded px-3 py-1 text-center">
-              nova-dashboard.local
-            </div>
-          </div>
-          <button className="p-1 hover:bg-neutral-800 rounded text-neutral-500 hover:text-neutral-300">
-            <MoreVertical className="w-4 h-4" />
-          </button>
+          <div className="w-10"></div>
         </div>
-
-        {/* Browser Content */}
-        <div className="flex-1 overflow-auto bg-black">
-          <div className="p-8">
-            {/* Dashboard Content */}
-            <div className="max-w-5xl">
-              <div className="mb-8">
-                <h1 className="text-3xl font-bold text-neutral-100">Analytics Dashboard</h1>
-                <p className="text-neutral-500 text-sm mt-2">Real-time financial insights and performance metrics</p>
-              </div>
-
-              {/* KPI Cards */}
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                {[
-                  {
-                    label: "Revenue",
-                    value: "$84.6K",
-                    change: "+18.2%",
-                    icon: TrendingUp,
-                    color: "emerald",
-                  },
-                  {
-                    label: "Active Users",
-                    value: "24.3K",
-                    change: "+6.8%",
-                    icon: Users,
-                    color: "cyan",
-                  },
-                  {
-                    label: "Security Score",
-                    value: "99.9%",
-                    change: "Healthy",
-                    icon: Shield,
-                    color: "violet",
-                  },
-                ].map((card, idx) => {
-                  const Icon = card.icon;
-                  const colorClass =
-                    card.color === "emerald"
-                      ? "text-emerald-500"
-                      : card.color === "cyan"
-                      ? "text-cyan-500"
-                      : "text-violet-500";
-                  return (
-                    <div
-                      key={idx}
-                      className="bg-neutral-900 border border-neutral-800 rounded-lg p-6"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="text-neutral-500 text-sm">
-                            {card.label}
-                          </p>
-                          <p className="text-2xl font-bold text-neutral-100 mt-2">
-                            {card.value}
-                          </p>
-                          <p className={`text-xs mt-2 ${colorClass}`}>
-                            {card.change}
-                          </p>
-                        </div>
-                        <Icon className={`w-5 h-5 ${colorClass}`} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Chart Area */}
-              <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
-                <h2 className="text-lg font-semibold text-neutral-100 mb-4">Revenue Trend</h2>
-                <div className="h-40 flex items-end gap-1">
-                  {[40, 50, 45, 65, 55, 80, 90, 70, 85, 95, 80, 100].map(
-                    (height, idx) => (
-                      <div
-                        key={idx}
-                        className="flex-1 bg-gradient-to-t from-cyan-500 to-emerald-500 rounded-t opacity-80 hover:opacity-100 transition"
-                        style={{ height: `${height}%` }}
-                      />
-                    )
-                  )}
-                </div>
-                <div className="flex gap-4 mt-4 text-xs text-neutral-500">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-cyan-500 rounded-full" />
-                    Baseline
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full" />
-                    Current
-                  </div>
-                </div>
-              </div>
-
-              {/* Metrics Grid */}
-              <div className="grid grid-cols-3 gap-4 mt-6">
-                {[
-                  { label: "Retention", value: "92.4%", accent: "emerald" },
-                  { label: "Latency", value: "214ms", accent: "cyan" },
-                  { label: "Risk Score", value: "0.03%", accent: "violet" },
-                ].map((metric, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-neutral-900 border border-neutral-800 rounded-lg p-4"
-                  >
-                    <p className="text-neutral-500 text-xs">{metric.label}</p>
-                    <p className="text-xl font-bold text-neutral-100 mt-2">
-                      {metric.value}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-black/20">
+          <Terminal className="w-12 h-12 text-neutral-700 mb-4" />
+          <h2 className="text-xl font-medium text-neutral-300 mb-2">Live Preview Engine</h2>
+          <p className="text-sm text-neutral-500 max-w-md">
+            The code generated by Groq AI is available in the <strong className="text-cyan-500 font-medium">Code Tab</strong>. A live renderer will execute it here in future updates.
+          </p>
         </div>
       </div>
     </div>
@@ -598,31 +483,27 @@ function CodePane({ code }: { code: string }) {
   };
 
   return (
-    <div className="h-full overflow-hidden flex flex-col bg-black">
-      <div className="border-b border-neutral-800 px-6 py-3 flex items-center justify-between bg-neutral-950">
-        <div className="flex items-center gap-2 text-sm text-neutral-400">
-          <Terminal className="w-4 h-4" />
-          <span>Dashboard.tsx</span>
-        </div>
+    <div className="h-full overflow-hidden flex flex-col bg-black relative">
+      <div className="absolute top-4 right-6 z-10">
         <button
           onClick={handleCopy}
-          className="flex items-center gap-2 px-3 py-1.5 bg-neutral-900 border border-neutral-800 rounded hover:bg-neutral-800 transition text-xs text-neutral-400 hover:text-neutral-200"
+          className="flex items-center gap-2 px-3 py-1.5 bg-neutral-800/80 border border-neutral-700 rounded-md hover:bg-neutral-700 transition text-xs text-neutral-300 backdrop-blur"
         >
           {copied ? (
             <>
-              <Check className="w-3.5 h-3.5" />
-              Copied
+              <Check className="w-3.5 h-3.5 text-emerald-500" />
+              Copied!
             </>
           ) : (
             <>
               <Copy className="w-3.5 h-3.5" />
-              Copy
+              Copy Code
             </>
           )}
         </button>
       </div>
 
-      <pre className="flex-1 overflow-auto p-6 bg-black text-neutral-300 text-xs leading-relaxed font-mono">
+      <pre className="flex-1 overflow-auto p-6 bg-black text-neutral-300 text-[13px] leading-relaxed font-mono custom-scrollbar">
         <code>{code}</code>
       </pre>
     </div>
@@ -635,69 +516,52 @@ function CodePane({ code }: { code: string }) {
 interface AdminPanelProps {
   apiKeys: ApiKeyConfig[];
   copiedKey: string | null;
-  onToggleVisibility: (key: keyof typeof API_KEYS) => void;
-  onCopyKey: (key: keyof typeof API_KEYS, value: string) => void;
-  onUpdateKey: (key: keyof typeof API_KEYS, value: string) => void;
+  onToggleVisibility: (key: any) => void;
+  onCopyKey: (key: any, value: string) => void;
+  onUpdateKey: (key: any, value: string) => void;
+  onClose: () => void;
 }
 
-function AdminPanel({
-  apiKeys,
-  copiedKey,
-  onToggleVisibility,
-  onCopyKey,
-  onUpdateKey,
-}: AdminPanelProps) {
+function AdminPanel({ apiKeys, copiedKey, onToggleVisibility, onCopyKey, onUpdateKey, onClose }: AdminPanelProps) {
   return (
-    <div className="border-t border-neutral-800 bg-neutral-950 px-6 py-4 max-h-80 overflow-y-auto">
-      <div className="mb-4">
-        <div className="flex items-center gap-2 mb-4">
-          <KeyRound className="w-4 h-4 text-cyan-500" />
-          <h3 className="text-sm font-semibold text-neutral-200">API Key Configuration</h3>
-          <Lock className="w-3.5 h-3.5 text-amber-500 ml-auto" />
+    <div className="flex flex-col h-full p-6">
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-2">
+          <KeyRound className="w-5 h-5 text-cyan-500" />
+          <h3 className="text-sm font-semibold text-neutral-200">Configuration</h3>
+        </div>
+        <button onClick={onClose} className="p-1 hover:bg-neutral-800 rounded text-neutral-500">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="space-y-4 overflow-y-auto pr-2">
+        <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-lg mb-6">
+          <p className="text-xs text-cyan-400/80">
+            Enter your API keys to enable live AI code generation. Keys are saved securely in your browser's local storage.
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          {apiKeys.map((item) => (
-            <div
-              key={item.key}
-              className="bg-neutral-900 border border-neutral-800 rounded-lg p-3"
-            >
-              <p className="text-xs font-medium text-neutral-400 mb-2">{item.label}</p>
-              <div className="flex gap-1">
-                <input
-                  type={item.isVisible ? "text" : "password"}
-                  value={item.value}
-                  onChange={(e) => onUpdateKey(item.key, e.target.value)}
-                  className="flex-1 bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-xs text-neutral-200 outline-none focus:border-neutral-600 transition"
-                />
-                <button
-                  onClick={() => onToggleVisibility(item.key)}
-                  className="p-1 hover:bg-neutral-700 rounded transition text-neutral-500 hover:text-neutral-300"
-                >
-                  {item.isVisible ? (
-                    <Eye className="w-3.5 h-3.5" />
-                  ) : (
-                    <X className="w-3.5 h-3.5" />
-                  )}
-                </button>
-                <button
-                  onClick={() => onCopyKey(item.key, item.value)}
-                  className="p-1 hover:bg-neutral-700 rounded transition text-neutral-500 hover:text-neutral-300"
-                >
-                  {copiedKey === item.key ? (
-                    <Check className="w-3.5 h-3.5 text-emerald-500" />
-                  ) : (
-                    <Copy className="w-3.5 h-3.5" />
-                  )}
-                </button>
-              </div>
+        {apiKeys.map((item) => (
+          <div key={item.key} className="bg-neutral-900 border border-neutral-800 rounded-lg p-3">
+            <p className="text-xs font-medium text-neutral-400 mb-2 flex items-center justify-between">
+              {item.label}
+              {item.key === "GROQ_API_KEY" && <span className="text-[10px] bg-neutral-800 px-1.5 rounded text-neutral-500">Required</span>}
+            </p>
+            <div className="flex gap-1">
+              <input
+                type={item.isVisible ? "text" : "password"}
+                value={item.value}
+                onChange={(e) => onUpdateKey(item.key, e.target.value)}
+                placeholder="sk-..."
+                className="flex-1 bg-neutral-800 border border-neutral-700 rounded px-2 py-1.5 text-xs text-neutral-200 outline-none focus:border-neutral-500 transition"
+              />
+              <button onClick={() => onToggleVisibility(item.key)} className="p-1.5 hover:bg-neutral-700 rounded transition text-neutral-500">
+                {item.isVisible ? <Eye className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
+              </button>
             </div>
-          ))}
-        </div>
-
-        <p className="text-xs text-neutral-600 mt-3">
-          🔒 Keys are encrypted at rest. Use admin mode only for configuration.
-        </p>
+          </div>
+        ))}
       </div>
     </div>
   );
